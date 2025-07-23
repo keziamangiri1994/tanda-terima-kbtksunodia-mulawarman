@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tanda Terima - Sunodia</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    input, textarea, button {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
+      padding: 10px;
+    }
+    canvas, video {
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+    .header {
+      text-align: center;
+    }
+    .header img {
+      height: 80px;
+    }
+    .form-section {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>TANDA TERIMA</h2>
+    <h3>KB & TK KRISTEN SUNODIA (Jl. Mulawarman)</h3>
+    <img src="logo-sunodia.png" alt="Logo Sunodia" />
+  </div>
+
+  <form id="receiptForm" class="form-section">
+    <label>Nama Penerima</label>
+    <input type="text" id="nama" required />
+
+    <label>Jenis Barang</label>
+    <input type="text" id="barang" required />
+
+    <label>Dari Unit/Lembaga</label>
+    <input type="text" id="unit" required />
+
+    <label>Tanggal Diserahkan</label>
+    <input type="date" id="tanggal" required />
+
+    <label>Nama Pengirim/Pengantar</label>
+    <input type="text" id="pengirim" required />
+
+    <label>Foto Tanda Terima</label>
+    <video id="video" autoplay></video>
+    <button type="button" onclick="takePhoto()">Ambil Foto</button>
+    <canvas id="photoCanvas" width="320" height="240"></canvas>
+
+    <label>Tanda Tangan Penerima</label>
+    <canvas id="signature" width="320" height="100"></canvas>
+    <button type="button" onclick="clearSignature()">Bersihkan Tanda Tangan</button>
+
+    <button type="submit">Simpan dan Unduh PDF</button>
+  </form>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const photoCanvas = document.getElementById('photoCanvas');
+    const signatureCanvas = document.getElementById('signature');
+    const ctx = signatureCanvas.getContext('2d');
+    let drawing = false;
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      });
+
+    function takePhoto() {
+      const context = photoCanvas.getContext('2d');
+      context.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
+    }
+
+    signatureCanvas.addEventListener('mousedown', () => drawing = true);
+    signatureCanvas.addEventListener('mouseup', () => drawing = false);
+    signatureCanvas.addEventListener('mousemove', drawSignature);
+
+    function drawSignature(e) {
+      if (!drawing) return;
+      const rect = signatureCanvas.getBoundingClientRect();
+      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+      ctx.stroke();
+    }
+
+    function clearSignature() {
+      ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+      ctx.beginPath();
+    }
+
+    document.getElementById('receiptForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const nama = document.getElementById('nama').value;
+      const barang = document.getElementById('barang').value;
+      const unit = document.getElementById('unit').value;
+      const tanggal = document.getElementById('tanggal').value;
+      const pengirim = document.getElementById('pengirim').value;
+
+      doc.setFontSize(14);
+      doc.text('TANDA TERIMA', 80, 10);
+      doc.setFontSize(12);
+      doc.text('KB & TK KRISTEN SUNODIA (Jl. Mulawarman)', 40, 18);
+      doc.text(`Nama Penerima         : ${nama}`, 10, 35);
+      doc.text(`Jenis Barang           : ${barang}`, 10, 45);
+      doc.text(`Dari Unit/Lembaga      : ${unit}`, 10, 55);
+      doc.text(`Tanggal Diserahkan     : ${tanggal}`, 10, 65);
+      doc.text(`Nama Pengirim/Pengantar: ${pengirim}`, 10, 75);
+
+      const photoData = photoCanvas.toDataURL('image/jpeg');
+      const signData = signatureCanvas.toDataURL('image/png');
+
+      doc.text(`Foto Tanda Terima:`, 10, 85);
+      doc.addImage(photoData, 'JPEG', 10, 90, 60, 40);
+      doc.text(`Tanda Tangan:`, 80, 85);
+      doc.addImage(signData, 'PNG', 80, 90, 60, 40);
+
+      doc.save(`TandaTerima_${nama}.pdf`);
+    });
+  </script>
+</body>
+</html>
